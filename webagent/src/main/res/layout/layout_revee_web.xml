@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.app.webagent.view.PageStatusLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/psl_web"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.tencent.smtt.sdk.WebView
+        android:id="@+id/wv"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+    </com.tencent.smtt.sdk.WebView>
+
+    <ImageView
+        android:id="@+id/iv_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="14dp"
+        android:layout_marginRight="14dp"
+        android:layout_marginTop="30dp"
+        android:src="@mipmap/icon_refresh" />
+
+    <ImageView
+        android:id="@+id/iv_back"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/iv_refresh"
+        android:layout_marginRight="14dp"
+        android:src="@mipmap/arrow_back_white"
+        android:visibility="visible" />
+
+    <ProgressBar
+        android:id="@+id/pb"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:progressDrawable="@drawable/layer_progress"
+        android:visibility="gone" />
+
+</com.app.webagent.view.PageStatusLayout>

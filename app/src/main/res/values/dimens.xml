@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<resources>
+
+    <!-- DynamicGrid -->
+
+    <dimen name="elevation_2dp">2dp</dimen>
+
+</resources>
