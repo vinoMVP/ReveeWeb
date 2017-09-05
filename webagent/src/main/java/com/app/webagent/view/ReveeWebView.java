@@ -1,9 +1,15 @@
 package com.app.webagent.view;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Bitmap;
+import android.net.Uri;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.View;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebView;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
@@ -12,9 +18,6 @@ import android.widget.TextView;
 import com.app.webagent.R;
 import com.app.webagent.ReveeWeb;
 import com.app.webagent.base.ReveeWebViewClient;
-import com.tencent.smtt.sdk.ValueCallback;
-import com.tencent.smtt.sdk.WebChromeClient;
-import com.tencent.smtt.sdk.WebView;
 
 /**
  * 系定义的webview
@@ -22,14 +25,14 @@ import com.tencent.smtt.sdk.WebView;
 
 public class ReveeWebView extends RelativeLayout implements View.OnClickListener {
 
-    private Context context;
-    private WebView webView;
     private PageStatusLayout psl_web;
     private ImageView iv_refresh;
     private ImageView iv_back;
     private ProgressBar pb;
     private ReveeWeb reveeWeb;
     private TextView tv_refresh;
+    private Boolean isError = false;
+    private ReveeWebListener listener;
 
     public ReveeWebView(Context context) {
         this(context, null);
@@ -40,10 +43,9 @@ public class ReveeWebView extends RelativeLayout implements View.OnClickListener
         init(context);
     }
 
-    private void init(Context context) {
-        this.context = context;
+    private void init(final Context context) {
         View view = View.inflate(context, R.layout.layout_revee_web, null);
-        webView = (WebView) view.findViewById(R.id.wv);
+        WebView webView = (WebView) view.findViewById(R.id.wv);
         psl_web = (PageStatusLayout) view.findViewById(R.id.psl_web);
         iv_refresh = (ImageView) view.findViewById(R.id.iv_refresh);
         iv_back = (ImageView) view.findViewById(R.id.iv_back);
@@ -53,7 +55,28 @@ public class ReveeWebView extends RelativeLayout implements View.OnClickListener
         addView(view);
         // 一些初始化操作
         reveeWeb.setWebView(webView).prepare(context).setWebViewClient(new ReveeWebViewClient() {
-            private Boolean isError = false;
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                String schemeUrl = "";
+                if (url.contains("taobao") && !url.contains("login")) {
+                    if (url.startsWith("https")) {
+                        schemeUrl = url.replace("https", "taobao");
+                    } else if (url.startsWith("http")) {
+                        schemeUrl = url.replace("http", "taobao");
+                    }
+                } else {
+                    schemeUrl = url;
+                }
+                Log.e("guoxing", "schemeUrl:" + schemeUrl);
+                Log.e("guoxing", "url:" + url);
+                if (!schemeUrl.startsWith("http")) {
+                    if (startActivityByUri(context, schemeUrl)) {
+                        return true;
+                    }
+                }
+                return super.shouldOverrideUrlLoading(view, url);
+            }
 
             @Override
             public void onReceivedError(WebView webView, int i, String s, String s1) {
@@ -93,6 +116,17 @@ public class ReveeWebView extends RelativeLayout implements View.OnClickListener
                 pb.setProgress(i);
             }
 
+            @Override
+            public void onReceivedTitle(WebView webView, String s) {
+                super.onReceivedTitle(webView, s);
+                if (s.contains("404") || s.contains("500") || s.contains("Error") || s.contains("找不到网页")) {
+                    isError = true;
+                    psl_web.showError();
+                }
+                if (listener != null) {
+                    listener.onReceivedTitle(webView, s);
+                }
+            }
         });
 
         View errorView = View.inflate(context, R.layout.layout_web_error, null);
@@ -150,6 +184,7 @@ public class ReveeWebView extends RelativeLayout implements View.OnClickListener
      */
     public void onResume() {
         reveeWeb.onResume();
+        reveeWeb.getWebSettings().setJavaScriptEnabled(true);
     }
 
     /**
@@ -157,6 +192,7 @@ public class ReveeWebView extends RelativeLayout implements View.OnClickListener
      */
     public void onPause() {
         reveeWeb.onPause();
+        reveeWeb.getWebSettings().setJavaScriptEnabled(false);
     }
 
     /**
@@ -166,4 +202,82 @@ public class ReveeWebView extends RelativeLayout implements View.OnClickListener
         reveeWeb.destroy();
     }
 
+    public void reload() {
+        reveeWeb.refresh();
+    }
+
+    /**
+     * 添加js交互接口
+     *
+     * @param jsToJava 接口对象
+     * @param s        js调用的名称
+     */
+    public void addJavascriptInterface(Object jsToJava, String s) {
+        reveeWeb.addJavascriptInterface(jsToJava, s);
+    }
+
+    /**
+     * 获取ua
+     *
+     * @return ua字符串
+     */
+    public String getUserAgent() {
+        return reveeWeb.getWebSettings().getUserAgentString();
+    }
+
+    /**
+     * 设置ua
+     *
+     * @param s ua的字符串
+     */
+    public void setUserAgent(String s) {
+        reveeWeb.setUserAgent(s);
+    }
+
+    /**
+     * 前进
+     */
+    public void forward() {
+        reveeWeb.forward();
+    }
+
+    /**
+     * webview的回调接口
+     */
+    public interface ReveeWebListener {
+
+        /**
+         * 返回标题的回调
+         *
+         * @param webView
+         * @param title   标题
+         */
+        void onReceivedTitle(WebView webView, String title);
+    }
+
+    /**
+     * 设置web的listener
+     *
+     * @param listener
+     */
+    public void setReveeWebListener(ReveeWebListener listener) {
+        this.listener = listener;
+    }
+
+    /**
+     * 通过url启动activity
+     *
+     * @param context 上下文
+     * @param url     url
+     * @return 是否启动成功
+     */
+    private boolean startActivityByUri(Context context, String url) {
+        try {
+            context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

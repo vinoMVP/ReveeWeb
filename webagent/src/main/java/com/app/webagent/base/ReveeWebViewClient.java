@@ -1,7 +1,7 @@
 package com.app.webagent.base;
 
-import com.tencent.smtt.sdk.WebView;
-import com.tencent.smtt.sdk.WebViewClient;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 public class ReveeWebViewClient extends WebViewClient {
 

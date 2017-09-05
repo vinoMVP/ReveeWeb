@@ -5,12 +5,14 @@ import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
 
 import com.app.webagent.base.ReveeWebViewClient;
-import com.tencent.smtt.sdk.ValueCallback;
-import com.tencent.smtt.sdk.WebChromeClient;
-import com.tencent.smtt.sdk.WebSettings;
-import com.tencent.smtt.sdk.WebView;
+
+import java.lang.reflect.Field;
 
 /**
  * webview的代理
@@ -60,6 +62,10 @@ public class ReveeWeb {
         }
         settings.setAppCacheEnabled(true);
         settings.setAppCachePath(context.getCacheDir().toString());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
 
         mWebView.setWebViewClient(new ReveeWebViewClient());
         return this;
@@ -197,14 +203,46 @@ public class ReveeWeb {
      * 生命周期回调
      */
     public void destroy() {
+        releaseConfigCallback();
         mWebView.destroy();
+    }
+
+    // 解决WebView内存泄漏问题；
+    private void releaseConfigCallback() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) { // JELLY_BEAN
+            try {
+                Field field = WebView.class.getDeclaredField("mWebViewCore");
+                field = field.getType().getDeclaredField("mBrowserFrame");
+                field = field.getType().getDeclaredField("sConfigCallback");
+                field.setAccessible(true);
+                field.set(null, null);
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) { // KITKAT
+            try {
+                Field sConfigCallback = Class.forName("android.webkit.BrowserFrame").getDeclaredField("sConfigCallback");
+                if (sConfigCallback != null) {
+                    sConfigCallback.setAccessible(true);
+                    sConfigCallback.set(null, null);
+                }
+            } catch (NoSuchFieldException e) {
+                e.printStackTrace();
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
      * 设置ua的方法
      */
     public void setUserAgent(String userAgent) {
-        getWebSettings().setUserAgent(userAgent);
+        getWebSettings().setUserAgentString(userAgent);
     }
 
 }
